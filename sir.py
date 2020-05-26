@@ -10,17 +10,21 @@ class SIRPredict:
     a virus given the value of β and ɣ
     '''
 
-    def __init__(self, population: int, beta: float, gamma: float):
+    def __init__(self, population: int, beta: float, gamma: float, t: int = 0, initsir: tuple = None):
         self.beta = beta
         self.gamma = gamma
 
+        self.t = 0                              #Initial time
         self.n = population
 
-        self.reset_model()
+        if not initsir is None:
+            self.s, self.i, self.r = initsir
+        else:
+            self.reset_model()
 
     def reset_model(self):
         '''
-        Initialize and resets model for computation.
+        Initialize and resets model to t=0.
         Susceptible = population - 1
         Infected = 1 (index case)
         '''
@@ -29,13 +33,13 @@ class SIRPredict:
         self.r = 0
 
     def solve(self):
-        s_next = -(self.beta * self.s * self.i / self.n)
-        i_next = (self.beta * self.s * self.i / self.n) - self.gamma * self.i
-        r_next = self.gamma * self.i
+        dsdt = -(self.beta * self.s * self.i / self.n)
+        didt = (self.beta * self.s * self.i / self.n) - self.gamma * self.i
+        drdt = self.gamma * self.i
 
-        self.s = s_next
-        self.i = i_next
-        self.r = r_next
+        self.s += dsdt
+        self.i += didt
+        self.r += drdt
 
         return self.s, self.i, self.r
 
@@ -45,7 +49,7 @@ class SIRPredict:
         :param day: Day from the beginning of spread
         :return: Tuple with SIR values
         '''
-        for _ in range(day):
+        for _ in range(day - self.t):
             self.solve()
 
         return self.s, self.i, self.r
@@ -59,8 +63,7 @@ class SIRInterpolation:
         self.data = sir_values
         self.n = sir_values[0][0] + 1
 
-    @classmethod
-    def loss_rms(cls, point, data):
+    def loss_rms(self, point, data):
         '''
         Tries given
         :param point:
@@ -71,31 +74,31 @@ class SIRInterpolation:
         size = len(data)
         beta, gamma = point
 
-        def next_dt_SIR(time, sir_data):
+        def next_dt_SIR(t, sir_data):
             s, i, r = sir_data
-            return [-beta*s*i, beta*s*i-gamma*i, gamma*i]
+            return (-beta*s*i/self.n, beta*s*i/self.n-gamma*i, gamma*i)
 
         solution = solve_ivp(next_dt_SIR,
-                             (0, size),
-                             [S_0, I_0, R_0],
-                             t_eval=np.arange(0, size, 1),
-                             vectorized=True
+                             (0, size),                     #Integration interval
+                             self.data[0],                  #Initial state, float array of 3
+                             t_eval=np.arange(0, size, 1),  #Discrete time interval
+                             vectorized=True                #Functions supports vectors
                              )
-        return np.sqrt(np.mean((solution.y[1]-data)**2))
+        return np.sqrt( np.mean( (np.transpose(solution.y) - data) ** 2 ) )
 
 
     def interpolate(self):
         '''
         Estimate β and ɣ given integrated values from SIR model (cumulative sums).
         To fit the curve (thus getting β and ɣ) we must minimize the error using RMS.
-        :return:
+        :return: Estimated beta and gamma
         '''
         optimal = minimize(
-            SIRInterpolation.loss_rms,  #Loss function
+            self.loss_rms,              #Loss function
             [0.001, 0.001],             #Initial guess
             args = (self.data),
             method = 'L-BFGS-B',
-            bounds = [(0.00000001, 0.4), (0.00000001, 0.4)]     #β, ɣ bounds
+            bounds = [(0.0001, 1.0), (0.0001, 1.0)]     #β, ɣ bounds
         )
 
         self.beta, self.gamma = optimal.x
@@ -106,8 +109,28 @@ class SIRInterpolation:
 
 
 def main():
-    model = SIRPredict(1000, 0.2, 0.1)
-    plt.plot([model.solve() for _ in range(200)])
+
+    italian_population = 500000
+
+    import data_fetcher as df
+    raw_data = df.fetch_data()
+    data = df.process_data(raw_data, population=italian_population)
+    inter = SIRInterpolation(data)
+    beta, gamma = inter.interpolate()
+    print(beta, gamma)
+
+
+    print("Come si evolverà la situazione?")
+    model = SIRPredict(italian_population, beta, gamma, len(data), data[-1])
+
+    predicted_data = np.ndarray(shape=(100, 3))
+    for i, _ in enumerate(predicted_data):
+        predicted_data[i] = model.solve()
+
+    plt.plot(data)
+    plt.show()
+
+    plt.plot(np.vstack((data, predicted_data)))
     plt.show()
 
 

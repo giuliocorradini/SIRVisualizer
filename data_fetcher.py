@@ -4,7 +4,7 @@ import numpy as np
 national_data_source = "https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-json/dpc-covid19-ita-andamento-nazionale.json"
 #Italy's COVID-19 repository with virus spread data, updated with daily resolution
 
-def extract_sir(record, population: int = 0):
+def record_extract_sir(record, population: int = 0):
     '''
     Extracts SIR functions values given a record compliant to Italy COVID-19 repository json-based data format
     :param record: dict-like object (result of json conversion)
@@ -45,7 +45,7 @@ def process_data(data: np.ndarray, population: int = 0):
         sir = np.zeros(shape=(len(data), 2))
 
     for i, record in enumerate(data):
-        sir[i] = extract_sir(record, population)
+        sir[i] = record_extract_sir(record, population)
 
     return sir
 
