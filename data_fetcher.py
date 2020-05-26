@@ -75,9 +75,9 @@ def plot(data: np.ndarray, discretized: bool = False):
         plt.plot(data)
 
     if data.shape[1] == 3:
-        plt.legend(('Susceptible', 'Infected', 'Recovered'))
+        plt.legend(('Susceptible', 'Infectious', 'Recovered'))
     else:
-        plt.legend(['Infected', 'Recovered'])
+        plt.legend(('Infectious', 'Recovered'))
 
     plt.show()
 
