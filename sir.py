@@ -7,7 +7,7 @@ from scipy.optimize import minimize
 class SIRPredict:
     '''
     Represents the SIR model facilities to compute and predict the spread of
-    a virus given the value of β and ɣ
+    a virus given the value of i
     '''
 
     def __init__(self, population: int, beta: float, gamma: float, t: int = 0, initsir: tuple = None):
@@ -47,12 +47,25 @@ class SIRPredict:
         '''
         Predict epidemic spread given the day, in the discrete domain.
         :param day: Day from the beginning of spread
-        :return: Tuple with SIR values
+        :return: Tuple with SIR values in day t
         '''
         for _ in range(day - self.t):
             self.solve()
 
         return self.s, self.i, self.r
+
+    def spread_predict(self, final_day: int):
+        '''
+        Predict epidemic spread for a timespan, in the discrete domain.
+        :param day: Final day of prediction
+        :return: Numpy array with SIR values of predicted spread
+        '''
+
+        predicted = np.ndarray(shape=(final_day, 3))
+        for i in range(final_day):
+            predicted[i] = self.solve()
+
+        return predicted
 
 class SIRInterpolation:
     def __init__(self, sir_values: np.ndarray):
@@ -87,7 +100,7 @@ class SIRInterpolation:
         return np.sqrt( np.mean( (np.transpose(solution.y) - data) ** 2 ) )
 
 
-    def interpolate(self):
+    def fit(self):
         '''
         Estimate β and ɣ given integrated values from SIR model (cumulative sums).
         To fit the curve (thus getting β and ɣ) we must minimize the error using RMS.
@@ -116,7 +129,7 @@ def main():
     raw_data = df.fetch_data()
     data = df.process_data(raw_data, population=italian_population)
     inter = SIRInterpolation(data)
-    beta, gamma = inter.interpolate()
+    beta, gamma = inter.fit()
     print(beta, gamma)
 
 
