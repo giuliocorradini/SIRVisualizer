@@ -133,7 +133,6 @@ def main():
     print(beta, gamma)
 
 
-    print("Come si evolverà la situazione?")
     model = SIRPredict(italian_population, beta, gamma, len(data), data[-1])
 
     predicted_data = np.ndarray(shape=(100, 3))
