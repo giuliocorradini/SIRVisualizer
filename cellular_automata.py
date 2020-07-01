@@ -60,7 +60,7 @@ class VirusSpreadAutomata:
 
 def main():
     vsa = VirusSpreadAutomata(100, 0.5573631610109397, 0.45333239503416245)
-    vsa.evolve(90)
+    vsa.evolve(30)
 
     cpl.plot2d_animate(vsa.sandbox)
 
